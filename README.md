@@ -1,6 +1,6 @@
 # Hugo Link Poster
 
-A mobile-friendly web tool for quickly creating link posts on your Hugo blog.
+A tool for quickly creating shortform posts on my Hugo blog.
 
 ## Quick Start (Debug Mode)
 
@@ -14,10 +14,10 @@ pip install -r requirements.txt
 python debug_run.py
 ```
 
-Open http://localhost:5000 in your browser. In debug mode:
+Open http://localhost:5001 in your browser. In debug mode:
 - No login required
 - No GitHub token needed
-- Posts are displayed but not savedpy
+- Posts are displayed but not saved
 
 ## Features
 
