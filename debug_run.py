@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""
+Quick debug runner for testing the Hugo Link Poster without GitHub integration
+"""
+import os
+import sys
+
+# Set debug mode
+os.environ['DEBUG_MODE'] = 'true'
+os.environ['FLASK_SECRET_KEY'] = 'debug-secret-key'
+
+# Import and run the app
+from app import app
+
+print("\n🚀 Starting Hugo Link Poster in DEBUG MODE")
+print("📝 Posts will be shown but not pushed to GitHub")
+print("🔗 Open http://localhost:5001 in your browser")
+print("🛑 Press Ctrl+C to stop\n")
+
+app.run(debug=True, host='0.0.0.0', port=5001)

@@ -1,0 +1,32 @@
+# Ignore Python cache and virtualenv
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+
+# Ignore virtual environment folders
+env/
+venv/
+.venv/
+
+# Ignore environment variable files
+.env
+*.env
+.env.*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore log files
+*.log
+
+# Ignore IDE/editor config
+.vscode/
+.idea/
+*.swp
+
+# Ignore Hugo build output (if building site in same repo)
+public/
+resources/
