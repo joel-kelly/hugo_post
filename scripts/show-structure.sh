@@ -1,0 +1,57 @@
+#!/bin/bash
+
+echo "🗂️  Hugo Post Service - New Directory Structure"
+echo "==============================================="
+echo ""
+echo "📁 Root Directory:"
+echo "├── app.py                     # Main Flask application"
+echo "├── production.py              # Production runner"
+echo "├── debug_run.py               # Debug mode runner"
+echo "├── requirements.txt           # Python dependencies"
+echo "├── .env.example              # Environment template"
+echo "├── .env                      # Environment variables (not tracked)"
+echo "├── README.md                 # Project documentation"
+echo "├── test_env.py               # Environment test script"
+echo "└── venv/                     # Virtual environment (not tracked)"
+echo ""
+echo "📁 config/ - Configuration Files:"
+echo "├── hugo-post.service         # Systemd service file"
+echo "├── cloudflare-tunnel.yaml    # Tunnel configuration"
+echo "└── logrotate.conf           # Log rotation config"
+echo ""
+echo "📁 scripts/ - Shell Scripts:"
+echo "├── setup-complete.sh         # Complete setup script"
+echo "├── install-service.sh        # Install systemd service"
+echo "├── setup-cloudflare.sh       # Setup Cloudflare tunnel"
+echo "├── configure-domain.sh       # Configure domain routing"
+echo "├── setup-monitoring.sh       # Setup monitoring"
+echo "├── deploy.sh                 # Deploy service"
+echo "├── backup.sh                 # Create backup"
+echo "├── monitor.sh                # Check service status"
+echo "├── update-service.sh         # Update running service"
+echo "└── (generated scripts)       # Health checks, fixes, etc."
+echo ""
+echo "📁 docs/ - Documentation:"
+echo "└── DEPLOYMENT.md             # Detailed deployment guide"
+echo ""
+echo "✅ Service Status:"
+if systemctl is-active --quiet hugo-post; then
+    echo "🟢 Hugo Post Service: RUNNING"
+else
+    echo "🔴 Hugo Post Service: STOPPED"
+fi
+
+if systemctl is-active --quiet cloudflared; then
+    echo "🟢 Cloudflare Tunnel: RUNNING"
+else
+    echo "🔴 Cloudflare Tunnel: STOPPED"
+fi
+
+echo ""
+echo "🌐 Service URL: https://post.jelly.science"
+echo ""
+echo "📚 Quick Commands:"
+echo "• Monitor status: scripts/monitor.sh"
+echo "• Deploy updates: scripts/deploy.sh"
+echo "• Create backup: scripts/backup.sh"
+echo "• View logs: sudo journalctl -u hugo-post -f"

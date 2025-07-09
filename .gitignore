@@ -30,3 +30,10 @@ Thumbs.db
 # Ignore Hugo build output (if building site in same repo)
 public/
 resources/
+
+# Generated deployment scripts
+health-check.sh
+
+# Backup files
+*.bak
+*.backup

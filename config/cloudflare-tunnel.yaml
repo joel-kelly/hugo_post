@@ -1,0 +1,16 @@
+tunnel: a34f8738-7e39-4fa8-b3e4-08f8f5d9a235
+credentials-file: /home/jelly/.cloudflared/a34f8738-7e39-4fa8-b3e4-08f8f5d9a235.json
+
+ingress:
+  - hostname: post.jelly.science
+    service: http://127.0.0.1:5001
+  - service: http_status:404
+
+# Optional: Configure additional settings
+originRequest:
+  connectTimeout: 30s
+  tlsTimeout: 10s
+  tcpKeepAlive: 30s
+  noHappyEyeballs: false
+  keepAliveTimeout: 90s
+  httpHostHeader: post.jelly.science

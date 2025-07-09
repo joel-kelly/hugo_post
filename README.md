@@ -19,6 +19,17 @@ Open http://localhost:5001 in your browser. In debug mode:
 - No GitHub token needed
 - Posts are displayed but not saved
 
+## Production Deployment
+
+For production deployment with Cloudflare tunnels and systemd service:
+
+```bash
+# Complete setup
+scripts/setup-complete.sh
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+
 ## Features
 
 - 📱 Mobile-friendly interface
@@ -27,24 +38,24 @@ Open http://localhost:5001 in your browser. In debug mode:
 - 📝 Support for excerpts and commentary
 - 🚀 Direct GitHub commits (in production mode)
 - 🔒 Simple token-based authentication
+- 🌐 Cloudflare tunnel integration
+- 📊 Health monitoring and logging
+- 🔄 Automatic service management
 
-## Production Setup
+## Directory Structure
 
-1. **Create GitHub Personal Access Token**
-   - Go to GitHub Settings → Developer settings → Personal access tokens
-   - Generate token with `repo` permissions
-
-2. **Configure Environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your values
-   ```
-
-3. **Run in Production Mode**
-   ```bash
-   # Set DEBUG_MODE=false in .env
-   python app.py
-   ```
+```
+hugo_post/
+├── app.py                     # Main Flask application
+├── production.py              # Production runner
+├── debug_run.py               # Debug mode runner
+├── requirements.txt           # Python dependencies
+├── .env.example              # Environment template
+├── config/                   # Configuration files
+├── scripts/                  # Deployment and management scripts
+├── docs/                     # Documentation
+└── venv/                     # Virtual environment (created on setup)
+```
 
 ## Environment Variables
 
@@ -63,3 +74,33 @@ Open http://localhost:5001 in your browser. In debug mode:
 5. Click "Create Post"
 
 In production mode, this creates a markdown file in `content/links/` and uploads any selected images to `static/images/`.
+
+## Production Features
+
+- **Systemd Service**: Automatic startup and restart
+- **Cloudflare Tunnel**: Secure domain access with SSL
+- **Health Monitoring**: Automated health checks every 5 minutes
+- **Log Rotation**: Automatic log management
+- **Backup System**: Regular configuration backups
+- **Zero-downtime Deployment**: Seamless updates
+
+## Quick Commands
+
+```bash
+# Monitor service status
+scripts/monitor.sh
+
+# Deploy updates
+scripts/deploy.sh
+
+# Create backup
+scripts/backup.sh
+
+# View logs
+sudo journalctl -u hugo-post -f
+```
+
+## URLs
+
+- **Production**: https://post.jelly.science
+- **Local Debug**: http://localhost:5001
