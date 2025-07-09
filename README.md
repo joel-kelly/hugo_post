@@ -1,6 +1,6 @@
 # Hugo Link Poster
 
-A tool for quickly creating shortform posts on my Hugo blog.
+A 100% vibe-coded tool for quickly creating shortform posts on my Hugo blog.
 
 ## Quick Start (Debug Mode)
 
