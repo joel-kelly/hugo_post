@@ -37,29 +37,109 @@ HTML_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hugo Link Poster</title>
     <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --container-bg: white;
+            --text-color: #333;
+            --text-secondary: #555;
+            --text-muted: #666;
+            --border-color: #ddd;
+            --border-light: #e0e0e0;
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --danger-color: #e74c3c;
+            --danger-hover: #c0392b;
+            --success-bg: #d4edda;
+            --success-color: #155724;
+            --success-border: #c3e6cb;
+            --error-bg: #f8d7da;
+            --error-color: #721c24;
+            --error-border: #f5c6cb;
+            --debug-bg: #fff3cd;
+            --debug-color: #856404;
+            --debug-border: #ffeeba;
+            --debug-output-bg: #f8f9fa;
+            --debug-output-border: #6c757d;
+            --image-bg: #f0f0f0;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --container-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888;
+            --border-color: #404040;
+            --border-light: #555;
+            --primary-color: #4a9eff;
+            --primary-hover: #3d8bdb;
+            --danger-color: #ff6b6b;
+            --danger-hover: #e55a5a;
+            --success-bg: #1e3a2e;
+            --success-color: #4caf50;
+            --success-border: #2e5233;
+            --error-bg: #3d1a1a;
+            --error-color: #f44336;
+            --error-border: #5a2a2a;
+            --debug-bg: #2d2a1a;
+            --debug-color: #ffeb3b;
+            --debug-border: #3d3520;
+            --debug-output-bg: #2a2a2a;
+            --debug-output-border: #555;
+            --image-bg: #3a3a3a;
+            --shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
         * {
             box-sizing: border-box;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: var(--text-color);
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         .container {
             max-width: 600px;
             margin: 0 auto;
-            background: white;
+            background: var(--container-bg);
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--border-color);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            z-index: 10;
+        }
+        .theme-toggle:hover {
+            background: var(--border-light);
+            transform: scale(1.1);
         }
         h1 {
-            color: #2c3e50;
+            color: var(--text-color);
             margin-bottom: 30px;
             text-align: center;
+            padding-right: 60px;
+            transition: color 0.3s ease;
         }
         .form-group {
             margin-bottom: 20px;
@@ -68,7 +148,8 @@ HTML_TEMPLATE = '''
             display: block;
             margin-bottom: 5px;
             font-weight: 600;
-            color: #555;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
         }
         input[type="text"],
         input[type="password"],
@@ -76,17 +157,27 @@ HTML_TEMPLATE = '''
         textarea {
             width: 100%;
             padding: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 5px;
             font-size: 16px;
             font-family: inherit;
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="url"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
         }
         textarea {
             resize: vertical;
             min-height: 100px;
         }
         button {
-            background-color: #3498db;
+            background-color: var(--primary-color);
             color: white;
             padding: 12px 24px;
             border: none;
@@ -95,9 +186,10 @@ HTML_TEMPLATE = '''
             cursor: pointer;
             width: 100%;
             margin-top: 10px;
+            transition: background-color 0.3s ease;
         }
         button:hover {
-            background-color: #2980b9;
+            background-color: var(--primary-hover);
         }
         button:disabled {
             background-color: #95a5a6;
@@ -107,16 +199,17 @@ HTML_TEMPLATE = '''
             padding: 12px;
             margin-bottom: 20px;
             border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
         .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background-color: var(--success-bg);
+            color: var(--success-color);
+            border: 1px solid var(--success-border);
         }
         .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background-color: var(--error-bg);
+            color: var(--error-color);
+            border: 1px solid var(--error-border);
         }
         .image-selector {
             margin-top: 20px;
@@ -133,7 +226,8 @@ HTML_TEMPLATE = '''
             border: 3px solid transparent;
             border-radius: 5px;
             overflow: hidden;
-            background-color: #f0f0f0;
+            background-color: var(--image-bg);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
         .image-option img {
             width: 100%;
@@ -142,7 +236,7 @@ HTML_TEMPLATE = '''
             display: block;
         }
         .image-option.selected {
-            border-color: #3498db;
+            border-color: var(--primary-color);
         }
         .image-option input[type="radio"] {
             position: absolute;
@@ -154,8 +248,8 @@ HTML_TEMPLATE = '''
             margin: 20px 0;
         }
         .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -168,39 +262,46 @@ HTML_TEMPLATE = '''
         }
         .help-text {
             font-size: 14px;
-            color: #666;
+            color: var(--text-muted);
             margin-top: 5px;
+            transition: color 0.3s ease;
         }
         #logout {
-            background-color: #e74c3c;
+            background-color: var(--danger-color);
             margin-top: 30px;
         }
         #logout:hover {
-            background-color: #c0392b;
+            background-color: var(--danger-hover);
         }
         .debug-output {
-            background-color: #f8f9fa;
-            border: 2px dashed #6c757d;
+            background-color: var(--debug-output-bg);
+            border: 2px dashed var(--debug-output-border);
             border-radius: 5px;
             padding: 20px;
             margin-top: 20px;
             font-family: 'Courier New', monospace;
             white-space: pre-wrap;
             word-break: break-all;
+            color: var(--text-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
         .debug-notice {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            color: #856404;
+            background-color: var(--debug-bg);
+            border: 1px solid var(--debug-border);
+            color: var(--debug-color);
             padding: 10px;
             border-radius: 5px;
             margin-bottom: 20px;
             text-align: center;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+            <span id="themeIcon">🌙</span>
+        </button>
         {% if not authenticated %}
         <h1>Login</h1>
         <form id="loginForm">
@@ -267,6 +368,34 @@ HTML_TEMPLATE = '''
     </div>
     
     <script>
+        // Theme switching functionality
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            
+            // Apply saved theme
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme, themeIcon);
+            
+            // Theme toggle event listener
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme, themeIcon);
+            });
+        }
+        
+        function updateThemeIcon(theme, iconElement) {
+            iconElement.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', initTheme);
+        
         {% if not authenticated %}
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
