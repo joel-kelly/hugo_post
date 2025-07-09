@@ -713,7 +713,12 @@ date: {date}
 externalLink: "{data['url']}"
 sourceUrl: "{data.get('source', '')}"'''
     
+    print(f"Processing post: {data['title']}")
+    print(f"Image provided: {data.get('image', 'None')}")
+    print(f"Slug generated: {slug}")
+    
     image_filename = None
+    image_data = None
     if data.get('image'):
         # Process and save image
         try:
@@ -775,19 +780,25 @@ sourceUrl: "{data.get('source', '')}"'''
         repo.create_file(file_path, commit_message, content)
         
         # Upload image if provided
-        if image_filename and 'image_data' in locals():
+        if image_filename and image_data:
             image_path = f"static/images/{image_filename}"
             try:
                 # Check if image already exists
-                repo.get_contents(image_path)
+                existing_image = repo.get_contents(image_path)
+                print(f"Image already exists: {image_path}")
             except:
                 # Image doesn't exist, create it
+                print(f"Creating new image: {image_path}")
                 repo.create_file(
                     image_path,
                     f"Add image for: {data['title']}",
                     image_data,
                     branch="main"
                 )
+        elif image_filename and not image_data:
+            print(f"Warning: Image filename generated ({image_filename}) but no image data processed")
+        elif data.get('image') and not image_filename:
+            print(f"Warning: Image provided ({data.get('image')}) but no filename generated")
         
         return jsonify({'success': True, 'filename': filename})
         
