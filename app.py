@@ -13,6 +13,7 @@ import base64
 from github import Github
 import secrets
 from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright
 
 # Load environment variables from .env file
 load_dotenv()
@@ -211,6 +212,11 @@ HTML_TEMPLATE = '''
             color: var(--error-color);
             border: 1px solid var(--error-border);
         }
+        .alert-warning {
+            background-color: var(--debug-bg);
+            color: var(--debug-color);
+            border: 1px solid var(--debug-border);
+        }
         .image-selector {
             margin-top: 20px;
         }
@@ -357,6 +363,7 @@ HTML_TEMPLATE = '''
             
             <div class="image-selector" id="imageSelector" style="display: none;">
                 <label>Select Featured Image (optional)</label>
+                <button type="button" id="loadMoreImages" style="display: none; margin-bottom: 15px;">Load More Images</button>
                 <div class="image-grid" id="imageGrid"></div>
             </div>
             
@@ -456,30 +463,11 @@ HTML_TEMPLATE = '''
                     
                     // Display images if found
                     if (data.images && data.images.length > 0) {
-                        const imageGrid = document.getElementById('imageGrid');
-                        imageGrid.innerHTML = '';
-                        
-                        data.images.forEach((img, index) => {
-                            const div = document.createElement('div');
-                            div.className = 'image-option';
-                            div.innerHTML = `
-                                <input type="radio" name="selectedImage" value="${img}" id="img${index}">
-                                <label for="img${index}">
-                                    <img src="${img}" alt="Option ${index + 1}" loading="lazy">
-                                </label>
-                            `;
-                            div.addEventListener('click', () => {
-                                document.querySelectorAll('.image-option').forEach(el => el.classList.remove('selected'));
-                                div.classList.add('selected');
-                                div.querySelector('input').checked = true;
-                            });
-                            imageGrid.appendChild(div);
-                        });
-                        
-                        document.getElementById('imageSelector').style.display = 'block';
+                        displayImages(data.images);
+                        showAlert('Metadata fetched successfully!');
+                    } else {
+                        showAlert('Metadata fetched, but no images found. Try "Load More Images" for dynamic content.', 'warning');
                     }
-                    
-                    showAlert('Metadata fetched successfully!');
                 }
             } catch (error) {
                 showAlert('Failed to fetch metadata: ' + error.message, 'error');
@@ -487,6 +475,70 @@ HTML_TEMPLATE = '''
                 document.getElementById('loading').style.display = 'none';
             }
         });
+        
+        document.getElementById('loadMoreImages').addEventListener('click', async () => {
+            const url = document.getElementById('url').value;
+            if (!url) {
+                showAlert('Please enter a URL first', 'error');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loadMoreImages').disabled = true;
+            document.getElementById('loadMoreImages').textContent = 'Loading...';
+            
+            try {
+                const response = await fetch('/fetch-metadata-playwright', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url})
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showAlert(data.error, 'error');
+                } else {
+                    if (data.images && data.images.length > 0) {
+                        displayImages(data.images);
+                        showAlert(`Found ${data.images.length} images using deep scraping!`);
+                    } else {
+                        showAlert('No additional images found even with deep scraping.', 'warning');
+                    }
+                }
+            } catch (error) {
+                showAlert('Failed to load more images: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loadMoreImages').disabled = false;
+                document.getElementById('loadMoreImages').textContent = 'Load More Images';
+            }
+        });
+        
+        function displayImages(images) {
+            const imageGrid = document.getElementById('imageGrid');
+            imageGrid.innerHTML = '';
+            
+            images.forEach((img, index) => {
+                const div = document.createElement('div');
+                div.className = 'image-option';
+                div.innerHTML = `
+                    <input type="radio" name="selectedImage" value="${img}" id="img${index}">
+                    <label for="img${index}">
+                        <img src="${img}" alt="Option ${index + 1}" loading="lazy">
+                    </label>
+                `;
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.image-option').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    div.querySelector('input').checked = true;
+                });
+                imageGrid.appendChild(div);
+            });
+            
+            document.getElementById('imageSelector').style.display = 'block';
+            document.getElementById('loadMoreImages').style.display = 'inline-block';
+        }
         
         document.getElementById('linkForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -600,12 +652,21 @@ def fetch_url_metadata(url):
                 images.append(img_url)
         
         # Regular images (limit to first 10)
-        for img in soup.find_all('img', src=True)[:10]:
-            img_url = img['src']
-            if not img_url.startswith('http'):
-                img_url = urllib.parse.urljoin(url, img_url)
-            if img_url not in images and not any(skip in img_url for skip in ['logo', 'icon', 'avatar']):
-                images.append(img_url)
+        for img in soup.find_all('img')[:10]:
+            img_url = None
+            # Check for lazy-loaded images first (data-src, data-lazy-src, etc.)
+            for attr in ['data-src', 'data-lazy-src', 'data-original', 'src']:
+                if img.get(attr):
+                    img_url = img[attr]
+                    break
+            
+            if img_url:
+                if not img_url.startswith('http'):
+                    img_url = urllib.parse.urljoin(url, img_url)
+                # Skip placeholder images and common non-content images
+                skip_keywords = ['logo', 'icon', 'avatar', 'blank.png', 'placeholder']
+                if img_url not in images and not any(skip in img_url.lower() for skip in skip_keywords):
+                    images.append(img_url)
         
         # Extract source from domain
         domain = urllib.parse.urlparse(url).netloc
@@ -618,6 +679,122 @@ def fetch_url_metadata(url):
         }
     except Exception as e:
         return {'error': str(e)}
+
+def fetch_url_metadata_with_playwright(url):
+    """Fetch metadata from URL using Playwright for dynamic content"""
+    try:
+        with sync_playwright() as p:
+            # Launch browser (headless for production)
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            # Set a reasonable timeout
+            page.set_default_timeout(15000)  # 15 seconds
+            
+            # Navigate to the page
+            page.goto(url, wait_until='networkidle')
+            
+            # Wait a bit more for any lazy loading
+            page.wait_for_timeout(3000)
+            
+            # Try to scroll down to trigger lazy loading
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(1000)
+            
+            # Extract title
+            title = None
+            try:
+                title_element = page.locator('title').first
+                if title_element.count() > 0:
+                    title = title_element.text_content()
+            except:
+                pass
+            
+            # Try Open Graph title as fallback
+            if not title:
+                try:
+                    og_title = page.locator('meta[property="og:title"]').first
+                    if og_title.count() > 0:
+                        title = og_title.get_attribute('content')
+                except:
+                    pass
+            
+            # Extract images
+            images = []
+            
+            # First, look for CSS background images (many modern sites use these)
+            import re
+            page_content = page.content()
+            bg_image_urls = re.findall(r'background-image:\s*url\(["\']?([^"\']+)["\']?\)', page_content)
+            
+            for bg_url in bg_image_urls:
+                if not bg_url.startswith('http'):
+                    bg_url = urllib.parse.urljoin(url, bg_url)
+                
+                # Skip common non-content images
+                skip_keywords = ['logo', 'icon', 'avatar', 'blank.png', 'placeholder', 'loading', 'default']
+                should_skip = any(skip in bg_url.lower() for skip in skip_keywords)
+                
+                if not should_skip and bg_url not in images:
+                    images.append(bg_url)
+            
+            # Then get regular image elements if we don't have enough
+            if len(images) < 10:
+                img_elements = page.locator('img').all()
+                
+                for img in img_elements:
+                    try:
+                        # Try different attributes for image URL
+                        img_url = None
+                        for attr in ['src', 'data-src', 'data-lazy-src', 'data-original']:
+                            url_value = img.get_attribute(attr)
+                            if url_value:
+                                img_url = url_value
+                                break
+                        
+                        if img_url:
+                            # Convert relative URLs to absolute
+                            if not img_url.startswith('http'):
+                                img_url = urllib.parse.urljoin(url, img_url)
+                            
+                            # Skip common non-content images
+                            skip_keywords = ['logo', 'icon', 'avatar', 'blank.png', 'placeholder', 'loading']
+                            should_skip = any(skip in img_url.lower() for skip in skip_keywords)
+                            
+                            # Also check if image is very small (likely an icon)
+                            try:
+                                bounding_box = img.bounding_box()
+                                if (bounding_box and 
+                                    bounding_box['width'] > 0 and bounding_box['height'] > 0 and
+                                    (bounding_box['width'] < 50 or bounding_box['height'] < 50)):
+                                    should_skip = True
+                            except:
+                                pass
+                            
+                            if not should_skip and img_url not in images:
+                                images.append(img_url)
+                                
+                                # Limit to 15 images to avoid too many
+                                if len(images) >= 15:
+                                    break
+                    
+                    except Exception as e:
+                        continue
+            
+            # Extract source from domain
+            domain = urllib.parse.urlparse(url).netloc
+            source = domain.replace('www.', '')
+            
+            browser.close()
+            
+            return {
+                'title': title,
+                'images': images,
+                'source': source
+            }
+            
+    except Exception as e:
+        return {'error': f'Playwright scraping failed: {str(e)}'}
 
 def download_and_process_image(image_url, filename):
     """Download and process image"""
@@ -684,6 +861,20 @@ def fetch_metadata():
         return jsonify({'error': 'URL is required'}), 400
     
     metadata = fetch_url_metadata(url)
+    return jsonify(metadata)
+
+@app.route('/fetch-metadata-playwright', methods=['POST'])
+def fetch_metadata_playwright():
+    if not DEBUG_MODE and not session.get('authenticated'):
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.json
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({'error': 'URL is required'}), 400
+    
+    metadata = fetch_url_metadata_with_playwright(url)
     return jsonify(metadata)
 
 @app.route('/create-post', methods=['POST'])
