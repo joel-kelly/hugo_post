@@ -734,8 +734,9 @@ sourceUrl: "{data.get('source', '')}"'''
             front_matter += f'\nfeaturedImage: "/images/{image_filename}"'
         except Exception as e:
             return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
-    elif data.get('excerpt'):
-        # Only add excerpt if no featured image
+    
+    # Add excerpt if provided (independent of image)
+    if data.get('excerpt'):
         front_matter += f'\nexcerpt: "{data["excerpt"]}"'
     
     front_matter += '\n--- '
