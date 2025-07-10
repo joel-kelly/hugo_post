@@ -2,7 +2,7 @@ import os
 import re
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template_string, request, jsonify, session
 from PIL import Image
 from io import BytesIO
@@ -20,6 +20,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
+app.permanent_session_lifetime = timedelta(days=180)
 
 # Configuration
 API_TOKEN = os.environ.get('LINK_POSTER_TOKEN', 'change-this-token-in-production')
@@ -377,7 +378,7 @@ HTML_TEMPLATE = '''
     <script>
         // Theme switching functionality
         function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
+            const savedTheme = localStorage.getItem('theme') || 'dark';
             const themeToggle = document.getElementById('themeToggle');
             const themeIcon = document.getElementById('themeIcon');
             
@@ -840,6 +841,7 @@ def login():
     
     data = request.json
     if data.get('token') == API_TOKEN:
+        session.permanent = True
         session['authenticated'] = True
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid token'}), 401
