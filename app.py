@@ -2,6 +2,8 @@ import os
 import re
 import json
 import requests
+import logging
+import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template_string, request, jsonify, session
 from PIL import Image
@@ -17,6 +19,17 @@ from playwright.sync_api import sync_playwright
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('hugo_post.log', mode='a')
+    ]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
@@ -799,14 +812,27 @@ def fetch_url_metadata_with_playwright(url):
 
 def download_and_process_image(image_url, filename):
     """Download and process image"""
+    request_id = int(time.time() * 1000)  # Simple request ID for tracking
+    logger.info(f"[{request_id}] Starting image download - URL: {image_url}, Target: {filename}")
+    
+    start_time = time.time()
     try:
+        logger.info(f"[{request_id}] Sending HTTP request (timeout: 10s)")
         response = requests.get(image_url, timeout=10)
         response.raise_for_status()
         
+        download_time = time.time() - start_time
+        content_length = len(response.content)
+        logger.info(f"[{request_id}] Image downloaded successfully - Size: {content_length} bytes, Time: {download_time:.2f}s")
+        
+        logger.info(f"[{request_id}] Processing image with PIL")
         img = Image.open(BytesIO(response.content))
+        original_size = f"{img.width}x{img.height}"
+        logger.info(f"[{request_id}] Original image size: {original_size}, Mode: {img.mode}")
         
         # Convert RGBA to RGB if necessary
         if img.mode in ('RGBA', 'LA'):
+            logger.info(f"[{request_id}] Converting {img.mode} to RGB")
             background = Image.new('RGB', img.size, (255, 255, 255))
             background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
             img = background
@@ -815,17 +841,35 @@ def download_and_process_image(image_url, filename):
         if img.width > MAX_IMAGE_WIDTH:
             ratio = MAX_IMAGE_WIDTH / img.width
             new_height = int(img.height * ratio)
+            logger.info(f"[{request_id}] Resizing image from {img.width}x{img.height} to {MAX_IMAGE_WIDTH}x{new_height}")
             img = img.resize((MAX_IMAGE_WIDTH, new_height), Image.Resampling.LANCZOS)
         
         # Save as JPEG or PNG
         output = BytesIO()
         if filename.lower().endswith('.png'):
             img.save(output, 'PNG', optimize=True)
+            format_used = "PNG"
         else:
             img.save(output, 'JPEG', quality=JPEG_QUALITY, optimize=True)
+            format_used = f"JPEG (quality={JPEG_QUALITY})"
+        
+        final_size = len(output.getvalue())
+        total_time = time.time() - start_time
+        logger.info(f"[{request_id}] Image processing completed - Format: {format_used}, Final size: {final_size} bytes, Total time: {total_time:.2f}s")
         
         return output.getvalue()
+    except requests.exceptions.Timeout:
+        logger.error(f"[{request_id}] Image download timed out after 10 seconds - URL: {image_url}")
+        raise Exception(f"Image download timed out: {image_url}")
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"[{request_id}] Network connection failed - URL: {image_url}, Error: {str(e)}")
+        raise Exception(f"Network connection failed for image: {str(e)}")
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"[{request_id}] HTTP error downloading image - URL: {image_url}, Status: {response.status_code if 'response' in locals() else 'unknown'}")
+        raise Exception(f"HTTP error downloading image: {str(e)}")
     except Exception as e:
+        total_time = time.time() - start_time
+        logger.error(f"[{request_id}] Image processing failed after {total_time:.2f}s - URL: {image_url}, Error: {str(e)}")
         raise Exception(f"Failed to process image: {str(e)}")
 
 @app.route('/')
@@ -889,6 +933,10 @@ def create_post():
     
     data = request.json
     
+    # Generate request ID for tracking
+    request_id = int(time.time() * 1000)
+    logger.info(f"[{request_id}] Post creation request - Title: '{data.get('title', 'No title')}', Has image: {bool(data.get('image'))}")
+    
     # Generate filename
     slug = slugify(data['title'])
     filename = f"{slug}.md"
@@ -906,26 +954,33 @@ date: {date}
 externalLink: "{data['url']}"
 sourceUrl: "{data.get('source', '')}"'''
     
-    print(f"Processing post: {data['title']}")
-    print(f"Image provided: {data.get('image', 'None')}")
-    print(f"Slug generated: {slug}")
+    logger.info(f"[{request_id}] Processing post - Title: {data['title']}, Slug: {slug}, Image URL: {data.get('image', 'None')}")
     
     image_filename = None
     image_data = None
     if data.get('image'):
         # Process and save image
+        logger.info(f"[{request_id}] Starting image processing for URL: {data['image']}")
         try:
             ext = '.jpg'
             if data['image'].lower().endswith('.png'):
                 ext = '.png'
             image_filename = f"{slug}{ext}"
+            logger.info(f"[{request_id}] Generated image filename: {image_filename}")
             
             if not DEBUG_MODE:
                 # Download and process image
+                logger.info(f"[{request_id}] Downloading and processing image (production mode)")
                 image_data = download_and_process_image(data['image'], image_filename)
+                logger.info(f"[{request_id}] Image processing completed successfully")
+            else:
+                logger.info(f"[{request_id}] Skipping image download (debug mode)")
             
             front_matter += f'\nfeaturedImage: "/images/{image_filename}"'
+            logger.info(f"[{request_id}] Added featuredImage field to front matter")
         except Exception as e:
+            logger.error(f"[{request_id}] Image processing failed - Error: {str(e)}")
+            logger.error(f"[{request_id}] Post creation aborted due to image processing failure")
             return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
     
     # Add excerpt if provided (independent of image)
@@ -941,6 +996,7 @@ sourceUrl: "{data.get('source', '')}"'''
     
     # In debug mode, just return the generated content
     if DEBUG_MODE:
+        logger.info(f"[{request_id}] Debug mode - returning generated content without GitHub upload")
         response = {
             'success': True,
             'filename': filename,
@@ -948,10 +1004,12 @@ sourceUrl: "{data.get('source', '')}"'''
         }
         if image_filename:
             response['image_info'] = f"/static/images/{image_filename}"
+        logger.info(f"[{request_id}] Post creation completed successfully (debug mode)")
         return jsonify(response)
     
     try:
         # Connect to GitHub
+        logger.info(f"[{request_id}] Connecting to GitHub repository: {GITHUB_REPO}")
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(GITHUB_REPO)
         
@@ -971,32 +1029,40 @@ sourceUrl: "{data.get('source', '')}"'''
             pass
         
         # Create the post
+        logger.info(f"[{request_id}] Creating markdown file: {file_path}")
         repo.create_file(file_path, commit_message, content)
+        logger.info(f"[{request_id}] Markdown file created successfully")
         
         # Upload image if provided
         if image_filename and image_data:
             image_path = f"static/images/{image_filename}"
+            logger.info(f"[{request_id}] Uploading image to GitHub: {image_path}")
             try:
                 # Check if image already exists
                 existing_image = repo.get_contents(image_path)
-                print(f"Image already exists: {image_path}")
+                logger.warning(f"[{request_id}] Image already exists in repository: {image_path}")
             except:
                 # Image doesn't exist, create it
-                print(f"Creating new image: {image_path}")
+                logger.info(f"[{request_id}] Creating new image file in repository: {image_path}")
                 repo.create_file(
                     image_path,
                     f"Add image for: {data['title']}",
                     image_data,
                     branch="main"
                 )
+                logger.info(f"[{request_id}] Image uploaded successfully")
         elif image_filename and not image_data:
-            print(f"Warning: Image filename generated ({image_filename}) but no image data processed")
+            logger.warning(f"[{request_id}] Image filename generated ({image_filename}) but no image data processed - this indicates a bug")
         elif data.get('image') and not image_filename:
-            print(f"Warning: Image provided ({data.get('image')}) but no filename generated")
+            logger.warning(f"[{request_id}] Image URL provided ({data.get('image')}) but no filename generated - this indicates a bug")
+        else:
+            logger.info(f"[{request_id}] No image to upload")
         
+        logger.info(f"[{request_id}] Post creation completed successfully - File: {filename}")
         return jsonify({'success': True, 'filename': filename})
         
     except Exception as e:
+        logger.error(f"[{request_id}] Post creation failed - Error: {str(e)}")
         return jsonify({'error': f'Failed to create post: {str(e)}'}), 500
 
 if __name__ == '__main__':
