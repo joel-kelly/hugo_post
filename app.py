@@ -624,6 +624,26 @@ def slugify(text):
     text = re.sub(r'[-\s]+', '_', text)
     return text.strip('_')
 
+def extract_youtube_id(url):
+    """Extract YouTube video ID from URL"""
+    patterns = [
+        r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
+        r'(?:https?://)?(?:www\.)?youtube\.com/embed/([a-zA-Z0-9_-]{11})',
+        r'(?:https?://)?youtu\.be/([a-zA-Z0-9_-]{11})',
+        r'(?:https?://)?(?:www\.)?youtube\.com/v/([a-zA-Z0-9_-]{11})',
+        r'(?:https?://)?(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def is_youtube_url(url):
+    """Check if URL is a YouTube video"""
+    return extract_youtube_id(url) is not None
+
 def fetch_url_metadata(url):
     """Fetch metadata from URL including Open Graph data"""
     try:
@@ -937,6 +957,10 @@ def create_post():
     request_id = int(time.time() * 1000)
     logger.info(f"[{request_id}] Post creation request - Title: '{data.get('title', 'No title')}', Has image: {bool(data.get('image'))}")
     
+    # Check if this is a YouTube URL
+    is_youtube = is_youtube_url(data['url'])
+    youtube_id = extract_youtube_id(data['url']) if is_youtube else None
+    
     # Generate filename
     slug = slugify(data['title'])
     filename = f"{slug}.md"
@@ -991,6 +1015,13 @@ sourceUrl: "{data.get('source', '')}"'''
     
     # Build content
     content = front_matter + '\n'
+    
+    # Add YouTube embed for YouTube URLs
+    if is_youtube and youtube_id:
+        logger.info(f"[{request_id}] Adding YouTube embed for video ID: {youtube_id}")
+        content += f'\n{{{{< youtube "{youtube_id}" >}}}}\n'
+    
+    # Add user commentary if provided
     if data.get('content'):
         content += f"\n{data['content']}"
     
