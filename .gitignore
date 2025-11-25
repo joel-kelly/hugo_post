@@ -1,9 +1,18 @@
 # Ignore Python cache and virtualenv
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyo
 *.pyd
 *.pdb
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Ignore virtual environment folders
 env/
