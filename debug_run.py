@@ -5,6 +5,11 @@ Quick debug runner for testing the Hugo Link Poster without GitHub integration
 import os
 import sys
 
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
+
 # Set debug mode
 os.environ['DEBUG_MODE'] = 'true'
 os.environ['FLASK_SECRET_KEY'] = 'debug-secret-key'

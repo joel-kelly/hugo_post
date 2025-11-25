@@ -702,7 +702,7 @@ HTML_TEMPLATE = '''
             });
             previewHTML += `<div class="preview-meta">`;
             previewHTML += `Posted on ${dateStr} | `;
-            previewHTML += `<a href="${escapeHtml(url)}" target="_blank">${source || new URL(url).hostname.replace('www.', '')}</a>`;
+            previewHTML += `<a href="${escapeHtml(url)}" target="_blank">${source || new URL(url).hostname.replace(/^www\\./, '')}</a>`;
             previewHTML += `</div>`;
 
             // Check if it's a YouTube video
@@ -725,7 +725,7 @@ HTML_TEMPLATE = '''
 
             // Add content if provided
             if (content) {
-                previewHTML += `<div class="preview-content">${escapeHtml(content).replace(/\n/g, '<br>')}</div>`;
+                previewHTML += `<div class="preview-content">${escapeHtml(content).replace(/\\n/g, '<br>')}</div>`;
             }
 
             // Display in modal
