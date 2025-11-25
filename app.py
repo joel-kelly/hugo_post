@@ -315,6 +315,182 @@ HTML_TEMPLATE = '''
             text-align: center;
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal-content {
+            background-color: var(--container-bg);
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            color: var(--text-color);
+        }
+        .modal-close {
+            color: var(--text-muted);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s ease;
+        }
+        .modal-close:hover,
+        .modal-close:focus {
+            color: var(--text-color);
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .preview-post {
+            color: var(--text-color);
+        }
+        .preview-post h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+        .preview-meta {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .preview-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .preview-meta a:hover {
+            text-decoration: underline;
+        }
+        .preview-image {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .preview-content {
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+        .preview-excerpt {
+            font-style: italic;
+            color: var(--text-secondary);
+            padding: 15px;
+            background: var(--image-bg);
+            border-left: 3px solid var(--primary-color);
+            margin: 15px 0;
+            border-radius: 3px;
+        }
+        .youtube-embed {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .youtube-embed iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .button-group button {
+            flex: 1;
+        }
+        .button-secondary {
+            background-color: var(--text-muted);
+        }
+        .button-secondary:hover {
+            background-color: var(--text-secondary);
+        }
+        .success-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--success-bg);
+            color: var(--success-color);
+            border: 2px solid var(--success-border);
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 2000;
+            min-width: 400px;
+            text-align: center;
+            animation: slideDown 0.5s ease;
+            font-size: 16px;
+        }
+        .success-notification strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .success-notification a {
+            color: var(--success-color);
+            text-decoration: underline;
+            font-weight: 600;
+        }
+        .success-notification a:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -380,14 +556,30 @@ HTML_TEMPLATE = '''
                 <button type="button" id="loadMoreImages" style="display: none; margin-bottom: 15px;">Load More Images</button>
                 <div class="image-grid" id="imageGrid"></div>
             </div>
-            
-            <button type="submit" id="submitButton">Create Post</button>
+
+            <div class="button-group">
+                <button type="button" id="previewButton" class="button-secondary">Preview Post</button>
+                <button type="submit" id="submitButton">Create Post</button>
+            </div>
         </form>
         
         <button id="logout">Logout</button>
         {% endif %}
     </div>
-    
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Post Preview</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent" class="preview-post"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Theme switching functionality
         function initTheme() {
@@ -446,6 +638,128 @@ HTML_TEMPLATE = '''
             document.getElementById('alerts').appendChild(alertDiv);
             setTimeout(() => alertDiv.remove(), 5000);
         }
+
+        function showSuccessNotification(message, githubUrl = null) {
+            const notification = document.createElement('div');
+            notification.className = 'success-notification';
+
+            let content = `<strong>✓ ${message}</strong>`;
+            if (githubUrl) {
+                content += `<a href="${githubUrl}" target="_blank">View file on GitHub →</a>`;
+            }
+            notification.innerHTML = content;
+
+            document.body.appendChild(notification);
+
+            // Scroll to top to make it visible
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Remove after 10 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 10000);
+        }
+
+        function extractYouTubeId(url) {
+            const patterns = [
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+                /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+            ];
+
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) return match[1];
+            }
+            return null;
+        }
+
+        function generatePreview() {
+            const url = document.getElementById('url').value;
+            const title = document.getElementById('title').value;
+            const source = document.getElementById('source').value;
+            const excerpt = document.getElementById('excerpt').value;
+            const content = document.getElementById('content').value;
+            const selectedImage = document.querySelector('input[name="selectedImage"]:checked')?.value;
+
+            if (!url || !title) {
+                showAlert('Please enter at least a URL and title to preview', 'error');
+                return;
+            }
+
+            // Generate preview HTML
+            let previewHTML = `<h1>${escapeHtml(title)}</h1>`;
+
+            // Add metadata
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            previewHTML += `<div class="preview-meta">`;
+            previewHTML += `Posted on ${dateStr} | `;
+            previewHTML += `<a href="${escapeHtml(url)}" target="_blank">${source || new URL(url).hostname.replace('www.', '')}</a>`;
+            previewHTML += `</div>`;
+
+            // Check if it's a YouTube video
+            const youtubeId = extractYouTubeId(url);
+            if (youtubeId) {
+                previewHTML += `<div class="youtube-embed">`;
+                previewHTML += `<iframe src="https://www.youtube.com/embed/${youtubeId}" allowfullscreen></iframe>`;
+                previewHTML += `</div>`;
+            }
+
+            // Add featured image if selected
+            if (selectedImage) {
+                previewHTML += `<img src="${escapeHtml(selectedImage)}" alt="Featured image" class="preview-image">`;
+            }
+
+            // Add excerpt if provided
+            if (excerpt) {
+                previewHTML += `<div class="preview-excerpt">${escapeHtml(excerpt)}</div>`;
+            }
+
+            // Add content if provided
+            if (content) {
+                previewHTML += `<div class="preview-content">${escapeHtml(content).replace(/\n/g, '<br>')}</div>`;
+            }
+
+            // Display in modal
+            document.getElementById('previewContent').innerHTML = previewHTML;
+            document.getElementById('previewModal').style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Preview modal functionality
+        document.getElementById('previewButton')?.addEventListener('click', generatePreview);
+
+        document.getElementById('closeModal')?.addEventListener('click', () => {
+            document.getElementById('previewModal').style.display = 'none';
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('previewModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                document.getElementById('previewModal').style.display = 'none';
+            }
+        });
         
         document.getElementById('fetchMetadata').addEventListener('click', async () => {
             const url = document.getElementById('url').value;
@@ -578,12 +892,13 @@ HTML_TEMPLATE = '''
                 });
                 
                 const data = await response.json();
-                
+
                 if (data.error) {
                     showAlert(data.error, 'error');
                 } else {
-                    showAlert('Post created successfully!');
-                    
+                    // Show prominent success notification with GitHub link
+                    showSuccessNotification('Post created successfully!', data.github_url);
+
                     // In debug mode, show the generated content
                     if (data.debug_content) {
                         const debugDiv = document.createElement('div');
@@ -595,7 +910,7 @@ HTML_TEMPLATE = '''
                         `;
                         document.querySelector('.container').appendChild(debugDiv);
                     }
-                    
+
                     document.getElementById('linkForm').reset();
                     document.getElementById('imageSelector').style.display = 'none';
                 }
@@ -1089,8 +1404,15 @@ sourceUrl: "{data.get('source', '')}"'''
         else:
             logger.info(f"[{request_id}] No image to upload")
         
+        # Generate GitHub file URL
+        github_url = f"https://github.com/{GITHUB_REPO}/blob/main/content/links/{filename}"
+
         logger.info(f"[{request_id}] Post creation completed successfully - File: {filename}")
-        return jsonify({'success': True, 'filename': filename})
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'github_url': github_url
+        })
         
     except Exception as e:
         logger.error(f"[{request_id}] Post creation failed - Error: {str(e)}")
