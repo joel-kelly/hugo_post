@@ -1,6 +1,15 @@
 #!/bin/bash
 
 # Deployment script for Hugo Post service
+# This script requires sudo privileges to restart systemd services
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "❌ This script needs sudo privileges to restart services."
+    echo "Please run: sudo scripts/deploy.sh"
+    exit 1
+fi
+
 echo "Deploying Hugo Post service..."
 
 # Function to check if service is running
